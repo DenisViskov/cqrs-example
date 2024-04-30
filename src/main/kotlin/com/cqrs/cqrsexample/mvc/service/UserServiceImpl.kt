@@ -98,6 +98,14 @@ class UserServiceImpl(
         TODO("Not yet implemented")
     }
 
+    override fun userRideBicycle(user: UserModel) {
+        if (!validationService.isValid(user)) throw IllegalArgumentException("User: $user is invalid")
+
+        userDao.setUserRideBicycleFlag(user)
+
+        mailNotificationClient.send(user, "cool, you ride bicycle")
+    }
+
     override fun makeUsersUnmodifiable(users: Set<UserModel>) {
         TODO("Not yet implemented")
     }

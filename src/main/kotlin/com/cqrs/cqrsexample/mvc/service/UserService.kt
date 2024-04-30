@@ -36,5 +36,7 @@ interface UserService<U> {
 
     fun findUnmodifiableUsers(): Set<U>
 
+    fun userRideBicycle(user: U)
+
     // and many others methods ...
 }
