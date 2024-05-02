@@ -3,6 +3,7 @@ package com.cqrs.cqrsexample.mvc.service
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import java.time.Instant.now
 import java.util.*
 
 private const val MSDN_CODE = "MSDN 2"
@@ -99,11 +100,38 @@ class UserServiceImpl(
     }
 
     override fun userRideBicycle(user: UserModel) {
-        if (!validationService.isValid(user)) throw IllegalArgumentException("User: $user is invalid")
+        userMetricsFacade.counter(USER_TAG_METRIC, "userRideBicycle").increment()
+        userMetricsFacade.timer(USER_TAG_METRIC) {
+            try {
+                log.debug("Process userRideBicycle for user: {}", user)
+                if (!validationService.isValid(user)) {
+                    log.warn("Given user is invalid {}", user)
+                    throw IllegalArgumentException("User: $user is invalid")
+                }
 
-        userDao.setUserRideBicycleFlag(user)
+                if (getUser(user.id) == null) {
+                    log.error("User with id: {} not found", user)
+                    throw UserNotFoundException("User with id: ${user.id} not found")
+                }
 
-        mailNotificationClient.send(user, "cool, you ride bicycle")
+                auditUserService.auditLog(user, now(), "change state ride bicycle")
+
+                userDao.setUserRideBicycleFlag(user)
+                mailNotificationClient.send(user, "cool, you ride bicycle")
+
+                eventPublisher.publishEvent(UserRideBycicleEvent(user))
+                log.debug("Process userRideBicycle success")
+            } catch (ex: DataAccessException) {
+                log.error("Couldn't save user state due to: {}", ex.message, ex)
+                throw ex
+            } catch (ex: SmtpException) {
+                log.error("Couldn't send email notification due to: {}", ex.message, ex)
+                throw ex
+            } catch (ex: Exception) {
+                log.error("Unexpected error occurred due to: {}", ex.message, ex)
+                throw ex
+            }
+        }
     }
 
     override fun makeUsersUnmodifiable(users: Set<UserModel>) {
@@ -138,4 +166,8 @@ class UserServiceImpl(
         TODO("Not yet implemented")
     }
 
+}
+
+private fun Any.increment() {
+    TODO("Not yet implemented")
 }
