@@ -168,6 +168,6 @@ class UserServiceImpl(
 
 }
 
-private fun Any.increment() {
+fun Any.increment() {
     TODO("Not yet implemented")
 }
